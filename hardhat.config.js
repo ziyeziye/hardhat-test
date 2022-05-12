@@ -1,4 +1,7 @@
+
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
+const { types } = require("hardhat/config");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -15,9 +18,30 @@ task("balance", "Prints an account's balance")
   .setAction(async (taskArgs, { ethers }) => {
     const account = await ethers.getSigner(taskArgs.a);
     const balance = await account.getBalance();
-    
+
     console.log("address", account.address);
-    console.log("balance", ethers.utils.formatEther(balance));
+    console.log("balance", ethers.utils.formatEther(balance), "ETH");
+  });
+
+task("deploy", "Deploy the contract")
+  .addParam("name", "The contract's name")
+  .addOptionalParam("params", "The contract's name", [], types.json)
+  .addOptionalParam("verify", "Verify the contract's deployment", false, types.boolean)
+  .setAction(async (taskArgs, hre) => {
+    const contract = await hre.ethers.getContractFactory(taskArgs.name);
+    const IContract = await contract.deploy(...taskArgs.params);
+
+    await IContract.deployed();
+    console.log(taskArgs.name, "Contract deployed to:", IContract.address);
+
+    if (taskArgs.verify == true) {
+      await hre.run("verify:verify", {
+        address: IContract.address,
+        constructorArguments: taskArgs.params,
+      })
+    }
+
+    return IContract;
   });
 
 // You need to export an object to set up your config
@@ -26,23 +50,36 @@ task("balance", "Prints an account's balance")
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
+let APIKEY = "";
+let PK = "";
+let FORKBLOCK = 0;
+let RPCURL = "";
+
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
       forking: {
-        url: "https://data-seed-prebsc-1-s1.binance.org:8545",
-        // blockNumber: 19172180
+        url: RPCURL,
+        blockNumber: FORKBLOCK
       }
     },
+    bsctest: {
+      url: RPCURL,
+      accounts: [PK]
+    },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    apiKey: APIKEY,
   },
   solidity: {
     version: "0.8.13",
-    // settings: {
-    // optimizer: {
-    //   enabled: false,
-    //   runs: 200
-    // }
-    // }
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
   },
 };
