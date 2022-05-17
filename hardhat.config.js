@@ -36,6 +36,7 @@ task("deploy", "Deploy the contract")
 
     if (taskArgs.verify == true) {
       await hre.run("verify:verify", {
+        contract: taskArgs.name,
         address: IContract.address,
         constructorArguments: taskArgs.params,
       })
